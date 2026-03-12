@@ -16,6 +16,12 @@ Most AI-driven failures are not model failures. They are control-plane failures:
 
 Bastion is the missing last line of defense.
 
+## Who this is for
+
+- AI builders wiring agents into shell, infra, databases, or cloud APIs
+- founders and operators who want automation without blind trust
+- teams that need a control plane between agent intent and real-world mutation
+
 ## What Bastion does
 
 - Classifies commands before execution
@@ -53,6 +59,16 @@ If a guardrail creates the same friction for `ls` and `terraform destroy`, it is
 - Incident capsules in Markdown
 - JSONL audit ledger
 - Unit tests and GitHub Actions workflow
+
+## For AI builders
+
+The docs are written to be useful even if you never adopt this code directly:
+
+- [PRD](docs/bastion-prd.md)
+- [Threat Model](docs/threat-model.md)
+- [Integration Playbook](docs/integration-playbook.md)
+- [Agent Safety Patterns](docs/agent-safety-patterns.md)
+- [Docs Index](docs/README.md)
 
 ## Quickstart
 
@@ -171,6 +187,13 @@ agent / human / automation
    real command execution
 ```
 
+## What makes Bastion different
+
+- It protects execution, not just prompting.
+- It treats recoverability as a hard requirement, not a nice-to-have.
+- It models accidental spend as a production risk.
+- It is designed to stay quiet during safe work and become strict only when irreversibility, blast radius, or uncertainty rises.
+
 ## Telegram approvals
 
 Bastion can send approval requests to Telegram and wait for a reply from the allowed chat:
@@ -220,6 +243,11 @@ This repository intentionally excludes:
 - provider adapters for cloud-native backup and deletion protection
 - policy simulation and replay against historical ledgers
 - web dashboard for approvals and incident review
+
+## Contributing and security
+
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
 
 ## License
 
