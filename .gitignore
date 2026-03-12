@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+__pycache__/
+runtime/
+*.pyc
+.pytest_cache/
+.bastion/
+.coverage

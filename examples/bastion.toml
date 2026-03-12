@@ -1,0 +1,55 @@
+[project]
+name = "Bastion"
+default_env = "dev"
+state_dir = ".bastion"
+default_mode = "enforce"
+
+[budgets]
+per_run_usd = 50
+per_session_usd = 100
+per_day_usd = 250
+per_month_usd = 1000
+warn_at_ratio = 0.8
+
+[approvals]
+provider = "console"
+timeout_seconds = 300
+poll_interval_seconds = 5
+
+[telegram]
+bot_token_env = "BASTION_TELEGRAM_BOT_TOKEN"
+chat_id_env = "BASTION_TELEGRAM_CHAT_ID"
+allowed_username_env = "BASTION_TELEGRAM_ALLOWED_USERNAME"
+state_filename = "telegram_state.json"
+
+[[assets]]
+id = "prod-db"
+env = "prod"
+tags = ["critical-data", "database", "prod"]
+backup_freshness_sla_hours = 24
+restore_test_sla_days = 7
+deletion_protection = true
+backup_command = "python3 -c \"print('snap-{asset_id}-{request_id}')\""
+notes = "Example production database asset."
+
+[[assets]]
+id = "staging-app"
+env = "staging"
+tags = ["service", "staging"]
+notes = "Example service deployment target."
+
+[[rules]]
+id = "prod-destructive-needs-approval"
+decision = "REQUIRE_APPROVAL"
+require_backup = true
+match = { envs = ["prod"], destructive = true }
+
+[[rules]]
+id = "unknown-cost-agent-run"
+decision = "REQUIRE_APPROVAL"
+match = { actor_types = ["agent", "automation"], unknown_cost = true }
+
+[[rules]]
+id = "prod-iam-review"
+decision = "REQUIRE_APPROVAL"
+match = { envs = ["prod"], actions = ["iam.change"] }
