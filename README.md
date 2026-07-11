@@ -73,7 +73,7 @@ The docs are written to be useful even if you never adopt this code directly:
 ## Quickstart
 
 ```bash
-python -m pip install .
+python3 -m pip install .
 # Optional: only needed for Telegram approvals
 cp .env.example .env
 ```
