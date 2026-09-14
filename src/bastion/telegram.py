@@ -9,6 +9,47 @@ import urllib.error
 import urllib.request
 
 
+SEVERITY_ICON = {
+    "info": "🟢",
+    "low": "🔵",
+    "medium": "🟡",
+    "high": "🟠",
+    "critical": "🔴",
+}
+
+
+def format_security_alert(
+    *,
+    device: str,
+    state: str,
+    findings: list[dict[str, Any]],
+    scan_id: str,
+) -> str:
+    severity_rank = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
+    highest = max(
+        findings,
+        key=lambda item: severity_rank.get(str(item.get("severity", "info")).lower(), 0),
+        default={"severity": "info"},
+    )
+    severity = str(highest.get("severity", "info")).lower()
+    icon = SEVERITY_ICON.get(severity, "⚪")
+    lines = [
+        "🛡️ BASTION SECURITY",
+        "",
+        f"{icon} {severity.upper()}",
+        f"Device: {device}",
+        f"State: {state}",
+        "",
+    ]
+    for finding in findings[:10]:
+        location = finding.get("path") or finding.get("check") or finding.get("kind", "finding")
+        lines.append(f"• {location}: {finding.get('message', 'Review required.')}")
+    if len(findings) > 10:
+        lines.append(f"• … and {len(findings) - 10} more finding(s)")
+    lines.extend(["", "Automatic changes: OFF", f"Scan ID: {scan_id}"])
+    return "\n".join(lines)
+
+
 @dataclass
 class TelegramSettings:
     bot_token: str

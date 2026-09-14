@@ -7,11 +7,13 @@ from pathlib import Path
 import sys
 
 from .approvals import ConsoleApprovalProvider, NullApprovalProvider, TelegramApprovalProvider
+from .collector import run_scan
 from .config import load_config
 from .gateway import BastionGateway
 from .models import ActionRequest, ApprovalProviderType, serialize_model
 from .policy import PolicyEngine
 from .store import StateStore
+from .telegram import TelegramClient, format_security_alert
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,6 +52,15 @@ def build_parser() -> argparse.ArgumentParser:
     ledger_tail.add_argument("--limit", type=int, default=20, help="Number of entries to print.")
     ledger_tail.add_argument("--json", action="store_true", help="Emit JSON lines.")
 
+    scan_parser = subparsers.add_parser("scan", help="Run a local read-only security scan.")
+    scan_parser.add_argument("--config", default=None, help="Path to bastion TOML config.")
+    scan_parser.add_argument("--json", action="store_true", help="Emit machine-readable output.")
+    scan_parser.add_argument("--notify", action="store_true", help="Send findings to configured Telegram chat.")
+
+    status_parser = subparsers.add_parser("status", help="Show the latest local scan status.")
+    status_parser.add_argument("--config", default=None, help="Path to bastion TOML config.")
+    status_parser.add_argument("--json", action="store_true", help="Emit machine-readable output.")
+
     return parser
 
 
@@ -61,6 +72,10 @@ def main(argv: list[str] | None = None) -> int:
         return handle_backup_record(args)
     if args.command == "ledger":
         return handle_ledger_tail(args)
+    if args.command == "scan":
+        return handle_scan(args)
+    if args.command == "status":
+        return handle_status(args)
 
     request = _request_from_args(args)
     config = load_config(args.config)
@@ -117,6 +132,60 @@ def handle_ledger_tail(args) -> int:
             f"{entry.get('action')} | allowed={entry.get('allowed')} | {entry.get('details')}"
         )
     return 0
+
+
+def handle_scan(args) -> int:
+    config = load_config(args.config)
+    result = run_scan(config.project.state_dir)
+    payload = {
+        "state": result.state,
+        "message": result.message,
+        "updatedAt": result.updated_at,
+        "checks": result.checks,
+        "findings": result.findings,
+    }
+    if args.notify:
+        status_path = Path(config.project.state_dir) / "status.json"
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        client = TelegramClient.from_env(
+            bot_token_env=config.telegram.bot_token_env,
+            chat_id_env=config.telegram.chat_id_env,
+            allowed_username_env=config.telegram.allowed_username_env,
+        )
+        client.send_message(
+            format_security_alert(
+                device=Path.home().name,
+                state=result.state,
+                findings=result.findings,
+                scan_id=str(status["scanId"]),
+            )
+        )
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"State: {result.state}")
+        print(result.message)
+        for finding in result.findings:
+            print(f"- [{finding['severity']}] {finding['message']}")
+    return 0 if result.state == "protected" else 1
+
+
+def handle_status(args) -> int:
+    config = load_config(args.config)
+    status_path = Path(config.project.state_dir) / "status.json"
+    if not status_path.exists():
+        payload = {"state": "not_configured", "message": "No scan has completed yet."}
+    else:
+        try:
+            payload = json.loads(status_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            payload = {"state": "degraded", "message": "Status file is unreadable."}
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"State: {payload.get('state', 'unknown')}")
+        print(payload.get("message", "No status message."))
+    return 0 if payload.get("state") == "protected" else 1
 
 
 def _build_approvals(config, store):
