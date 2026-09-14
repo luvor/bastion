@@ -4,6 +4,26 @@
 
 It sits between intent and mutation. Instead of trusting prompts, it enforces policy before a command can touch production data, infrastructure, or budget.
 
+## Security philosophy: assume the code is known
+
+Bastion does not depend on hiding its source code. We assume an attacker can
+read this entire repository, reverse-engineer the binary, understand every
+policy rule, and know how the agent integration works. Public source is not a
+security boundary; secrets, identity, permissions, isolation, and recovery are.
+
+The design goal is **containment by default**:
+
+- AI is an untrusted planner, never the final authority.
+- Read-only is the default; mutation needs an explicit policy decision.
+- Unknown target, identity, destination, cost, or recovery state fails closed.
+- Secrets never belong in Git, prompts, logs, findings, or Telegram messages.
+- Critical actions require exact-scope approval and leave tamper-evident evidence.
+- The guardrail must remain safer than the agent it is guarding.
+
+Knowing Bastion's code should let an attacker predict a denial, not bypass it.
+This is a design target, not a claim that the current alpha release is a
+complete EDR or can guarantee absence of compromise.
+
 ## Why this exists
 
 Most AI-driven failures are not model failures. They are control-plane failures:
@@ -59,6 +79,7 @@ If a guardrail creates the same friction for `ls` and `terraform destroy`, it is
 - Incident capsules in Markdown
 - JSONL audit ledger
 - Unit tests and GitHub Actions workflow
+- Local Apple Silicon read-only collector and menu-bar status helper
 
 ## For AI builders
 
@@ -225,6 +246,8 @@ reject <request_id>
 - Provider-side controls still matter. Bastion should orchestrate them, not replace them.
 - `break-glass` must stay rare, logged, and time-bounded.
 - Backup existence is not enough; restore verification is the real control.
+- The public repository is intentional; runtime secrets and local state are excluded.
+- Install released, reviewed versions on Macs; do not treat arbitrary `main` as a trusted binary.
 
 ## Repository hygiene
 
@@ -248,6 +271,7 @@ This repository intentionally excludes:
 
 - [Contributing](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)
+- [Security by Design](docs/security-by-design.md)
 
 ## License
 

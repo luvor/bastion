@@ -12,6 +12,8 @@ This documentation set is aimed at developers building with AI agents, not just 
   - Practical ways to put Bastion in front of tools, automations, and production paths.
 - [Agent Safety Patterns](agent-safety-patterns.md)
   - Reusable design patterns for any AI builder who wants safer automation.
+- [Security by Design](security-by-design.md)
+  - Trust model and invariants that remain valid when the source code is public.
 
 ## Supporting guides
 
