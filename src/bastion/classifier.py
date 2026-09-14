@@ -64,7 +64,8 @@ def classify_action(request: ActionRequest, asset: Asset | None) -> tuple[str, R
         risk = RiskLevel.R2
         reasons.append("Model invocation CLI detected.")
     else:
-        reasons.append("Unknown command family; keeping conservative defaults.")
+        risk = RiskLevel.R3
+        reasons.append("Unknown command family; explicit approval is required.")
 
     if asset is not None:
         if asset.env == "prod" and risk < RiskLevel.R2:
@@ -86,13 +87,39 @@ def classify_action(request: ActionRequest, asset: Asset | None) -> tuple[str, R
 
 def _looks_read_only(head: str, command: list[str], text: str) -> bool:
     if head == "git":
-        return not any(token in command for token in {"push", "commit", "tag", "reset", "rebase"})
+        mutating = {
+            "apply",
+            "checkout",
+            "clean",
+            "commit",
+            "config",
+            "fetch",
+            "merge",
+            "pull",
+            "push",
+            "rebase",
+            "restore",
+            "reset",
+            "stash",
+            "switch",
+            "tag",
+        }
+        return not any(token in command[1:] for token in mutating)
     if head == "kubectl":
         return any(token in command for token in {"get", "describe", "logs"})
     if head == "sed":
         return "-i" not in command
     if head == "curl":
-        return "-X" not in command or " -X GET" in text
+        upload_flags = {"-d", "--data", "--data-raw", "--data-binary", "-F", "--form", "-T", "--upload-file"}
+        if any(flag in command for flag in upload_flags):
+            return False
+        if "-X" in command:
+            try:
+                method = command[command.index("-X") + 1].upper()
+            except (IndexError, ValueError):
+                return False
+            return method == "GET"
+        return True
     return True
 
 

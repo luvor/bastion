@@ -12,6 +12,32 @@ from .policy import PolicyEngine
 from .store import StateStore
 
 
+_SECRET_FLAGS = {"-d", "--data", "--data-raw", "--data-binary", "-H", "--header", "-u", "--user"}
+
+
+def _redacted_command(command: list[str]) -> list[str]:
+    redacted: list[str] = []
+    redact_next = False
+    for arg in command:
+        if redact_next:
+            redacted.append("[REDACTED]")
+            redact_next = False
+            continue
+        if arg in _SECRET_FLAGS:
+            redacted.append(arg)
+            redact_next = True
+            continue
+        if any(marker in arg.lower() for marker in ("token=", "password=", "secret=", "api_key=")):
+            key = arg.split("=", 1)[0]
+            redacted.append(f"{key}=[REDACTED]")
+            continue
+        if arg.lower().startswith(("authorization:", "proxy-authorization:")):
+            redacted.append(arg.split(":", 1)[0] + ": [REDACTED]")
+            continue
+        redacted.append(arg)
+    return redacted
+
+
 class BastionGateway:
     def __init__(
         self,
@@ -81,7 +107,7 @@ class BastionGateway:
                 details=details,
             )
 
-        if assessment.approval_required:
+        if assessment.approval_required and request.mode != "shadow":
             approval_request = ApprovalRequest(
                 request_id=request_id,
                 summary=self._render_approval_summary(request, assessment),
@@ -236,6 +262,7 @@ class BastionGateway:
         incident_path: str | None,
         details: str,
     ) -> None:
+        safe_command = _redacted_command(request.command)
         self.store.append_ledger(
             {
                 "event_type": "execution",
@@ -245,7 +272,7 @@ class BastionGateway:
                 "decision": assessment.decision,
                 "risk": assessment.risk,
                 "action": assessment.action,
-                "command": request.command,
+                "command": safe_command,
                 "actor": request.actor,
                 "actor_type": request.actor_type,
                 "env": request.env,
@@ -269,7 +296,7 @@ class BastionGateway:
             f"Risk: {assessment.risk.name}",
             f"Action: {assessment.action}",
             f"Environment: {request.env}",
-            f"Command: {request.command_text}",
+            f"Command: {shlex.join(_redacted_command(request.command))}",
         ]
         if request.asset_id:
             summary.append(f"Asset: {request.asset_id}")
@@ -310,7 +337,7 @@ class BastionGateway:
             f"- Action: {assessment.action}",
             f"- Risk: {assessment.risk.name}",
             f"- Decision: {assessment.decision}",
-            f"- Command: `{request.command_text}`",
+            f"- Command: `{shlex.join(_redacted_command(request.command))}`",
         ]
         if request.asset_id:
             lines.append(f"- Asset: {request.asset_id}")

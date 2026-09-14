@@ -14,6 +14,8 @@ This documentation set is aimed at developers building with AI agents, not just 
   - Reusable design patterns for any AI builder who wants safer automation.
 - [Security by Design](security-by-design.md)
   - Trust model and invariants that remain valid when the source code is public.
+- [Mega AI SEC orchestration](mega-ai-sec-orchestration-2026-09-14.md)
+  - 100 research tracks, 100 design debates, 100 synthetic attack experiments, and source links.
 
 ## Supporting guides
 
