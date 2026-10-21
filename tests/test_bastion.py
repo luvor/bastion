@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -65,7 +66,12 @@ class BastionTests(unittest.TestCase):
             (launch_agents / "com.example.agent.plist").write_text("agent", encoding="utf-8")
             (launch_agents / ".env-token.plist").write_text("secret", encoding="utf-8")
 
-            result = run_scan(Path(tmpdir) / "state", home=home)
+            with patch("bastion.collector._security_checks", return_value={
+                "filevault": "enabled",
+                "gatekeeper": "enabled",
+                "sip": "enabled",
+            }):
+                result = run_scan(Path(tmpdir) / "state", home=home)
 
             self.assertEqual(result.state, "attention")
             self.assertTrue(result.baseline)
